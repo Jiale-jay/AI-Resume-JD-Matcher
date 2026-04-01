@@ -161,3 +161,67 @@ with st.expander("Preview Extracted Resume Text"):
         st.text_area("Extracted Text", resume_text[:5000], height=250)
     else:
         st.info("Upload a resume PDF to preview extracted text.")
+
+
+def chat_with_resume_context(resume: str, jd: str, question: str) -> str:
+    prompt = f"""
+You are an AI career assistant.
+
+You have access to:
+1. The candidate's resume
+2. The target job description
+
+Resume:
+{resume}
+
+Job Description:
+{jd}
+
+User Question:
+{question}
+
+Answer clearly and practically.
+Keep the answer concise but useful.
+If relevant, explain how the candidate can improve alignment with the job.
+"""
+    response = llm.invoke(prompt)
+    return response.content
+
+st.markdown("## 💬 Resume Chat Assistant")
+
+chat_question = st.text_input(
+    "Ask a question about your resume and the job description",
+    placeholder="e.g. What are my biggest gaps for this role?"
+)
+
+if st.button("Ask Assistant", use_container_width=True):
+    if not uploaded_resume:
+        st.warning("Please upload a resume PDF.")
+    elif not job_description.strip():
+        st.warning("Please paste a job description.")
+    elif not resume_text.strip():
+        st.error("Could not extract text from the uploaded PDF.")
+    elif not chat_question.strip():
+        st.warning("Please enter a question.")
+    else:
+        with st.spinner("Thinking..."):
+            try:
+                answer = chat_with_resume_context(
+                    resume_text[:12000],
+                    job_description[:12000],
+                    chat_question
+                )
+                st.session_state.chat_history.append(
+                    {"question": chat_question, "answer": answer}
+                )
+            except Exception as e:
+                st.error(f"Chat failed: {e}")
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+    
+if st.session_state.chat_history:
+    st.markdown("### Chat History")
+    for item in reversed(st.session_state.chat_history):
+        st.markdown(f"**You:** {item['question']}")
+        st.markdown(f"**Assistant:** {item['answer']}")
+        st.markdown("---")
